@@ -49,15 +49,6 @@ class AppUpdateNotifier extends _$AppUpdateNotifier with AppLogger {
   Future<AppUpdateState> check() async {
     loggy.debug("checking for update");
     state = const AppUpdateState.checking();
-    // TODO: temporary stub - _checkUpstream() below hits Hiddify's own
-    // GitHub releases API (Constants.githubReleasesApiUrl), which has no
-    // relation to this fork's versions. Wire this up to FMConnect's own
-    // release feed before switching back to it.
-    return state = const AppUpdateState.notAvailable();
-  }
-
-  // ignore: unused_element
-  Future<AppUpdateState> _checkUpstream() async {
     final appInfo = ref.watch(appInfoProvider).requireValue;
     if (!appInfo.release.allowCustomUpdateChecker) {
       loggy.debug("custom update checkers are not allowed for [${appInfo.release.name}] release");
@@ -65,7 +56,8 @@ class AppUpdateNotifier extends _$AppUpdateNotifier with AppLogger {
     }
     return ref
         .watch(appUpdateRepositoryProvider)
-        .getLatestVersion()
+        // fork releases are always published as GitHub pre-releases (beta channel)
+        .getLatestVersion(includePreReleases: true)
         .match(
           (err) {
             loggy.warning("failed to get latest version", err);
