@@ -116,6 +116,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       WINDOWS_SIGNING_KEY_SET: ${{ secrets.WINDOWS_SIGNING_KEY != '' }}
+      SENTRY_AUTH_TOKEN_SET: ${{ secrets.SENTRY_AUTH_TOKEN != '' }}
     steps:
       - name: checkout
         uses: actions/checkout@v6
@@ -289,7 +290,7 @@ jobs:
           Get-ChildItem -Path out
           
       - name: Upload Debug Symbols
-        if: ${{ inputs.upload-artifact && inputs.tag-name != 'draft' }}
+        if: ${{ inputs.upload-artifact && inputs.tag-name != 'draft' && env.SENTRY_AUTH_TOKEN_SET == 'true' }}
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
@@ -421,6 +422,8 @@ jobs:
     if: ${{ inputs.upload-artifact && inputs.tag-name != 'draft' }}
     needs: [build]
     runs-on: ubuntu-latest
+    env:
+      GOOGLE_PLAY_SET: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON != '' }}
     steps:
       - name: checkout
         uses: actions/checkout@v6
@@ -437,7 +440,7 @@ jobs:
           ls -R ./out
           ls -R ./.github/
           ls -R ./.git/
-          mv out/fmconnect-android-market.aab  fmconnect-android-market.aab
+          mv out/fmconnect-android-market.aab fmconnect-android-market.aab || echo "no aab"
 
       - name: prepare_release_message
         run: |
@@ -456,9 +459,11 @@ jobs:
           files: ./out/*
 
       - name: Create service_account.json
+        if: ${{ env.GOOGLE_PLAY_SET == 'true' }}
         run: echo '${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}' > service_account.json
 
       - name: Deploy to Google Play Internal Testers
+        if: ${{ env.GOOGLE_PLAY_SET == 'true' }}
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJson: service_account.json
@@ -470,10 +475,11 @@ jobs:
 
   upload-to-testflight:
     needs: [build]
-    if: ${{ inputs.upload-artifact &&  inputs.tag-name != 'draft' }}
-    #if: ${{ inputs.upload-artifact }}
+    if: ${{ inputs.upload-artifact && inputs.tag-name != 'draft' }}
     runs-on: macOS-latest
     timeout-minutes: 30
+    env:
+      APPLE_CERT_SET: ${{ secrets.APPLE_UPLOAD_CERTIFICATE_P12 != '' }}
     steps:
       - name: Download Artifact
         uses: actions/download-artifact@v7
@@ -483,34 +489,37 @@ jobs:
           path: ./out/
 
       - uses: Apple-Actions/import-codesign-certs@v6
+        if: ${{ env.APPLE_CERT_SET == 'true' }}
         with:
           p12-file-base64: ${{ secrets.APPLE_UPLOAD_CERTIFICATE_P12 }}
           p12-password: ${{ secrets.APPLE_CERTIFICATE_P12_PASSWORD }}
 
       - uses: Apple-Actions/download-provisioning-profiles@v1
+        if: ${{ env.APPLE_CERT_SET == 'true' }}
         with:
           bundle-id: app.hiddify.com
           issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
           api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
           api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
       - uses: Apple-Actions/download-provisioning-profiles@v1
+        if: ${{ env.APPLE_CERT_SET == 'true' }}
         with:
           bundle-id: app.hiddify.com.SingBoxPacketTunnel
           issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
           api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
           api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
-  
-
 
       - name: Import Apple Mobile Provisioning Profile
+        if: ${{ env.APPLE_CERT_SET == 'true' }}
         run: |
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           echo "${{secrets.APPLE_DIST_PROVISIONING_PROFILES_TARGZ_BASE64}}"|base64 --decode | tar xz -C ~/Library/MobileDevice/Provisioning\ Profiles
         #echo "${{secrets.NEW_APPLE_STORE_PROVISIONING_PROFILES_TARXZ_BASE64}}"|base64 --decode | tar xJ -C ~/Library/MobileDevice/Provisioning\ Profiles
 
       - uses: Apple-Actions/upload-testflight-build@v4
+        if: ${{ env.APPLE_CERT_SET == 'true' }}
         with:
-          app-path: 'out/FMConnect-iOS.ipa' 
+          app-path: 'out/FMConnect-iOS.ipa'
           issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
           api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
           api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
