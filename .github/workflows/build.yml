@@ -19,18 +19,18 @@ env:
   NDK_VERSION: r28c
   UPLOAD_ARTIFACT: "${{ inputs.upload-artifact }}"
   TAG_NAME: "${{ inputs.tag-name }}"
-  TARGET_NAME_gz: "Hiddify-Linux-x64-AppImage.tar"
-  TARGET_NAME_AppImage: "Hiddify-Linux-x64-AppImage"
-  TARGET_NAME_deb: "Hiddify-Debian-x64"
-  # TARGET_NAME_rpm: "Hiddify-rpm-x64"
-  TARGET_NAME_apk: "Hiddify-Android"
-  TARGET_NAME_aab: "Hiddify-Android"
-  TARGET_NAME_exe: "Hiddify-Windows-Setup-x64"
-  TARGET_NAME_msix: "Hiddify-Windows-x64"
-  TARGET_NAME_zip: "Hiddify-Windows-Portable-x64"
-  TARGET_NAME_dmg: "Hiddify-MacOS"
-  TARGET_NAME_pkg: "Hiddify-MacOS-Installer"
-  TARGET_NAME_ipa: "Hiddify-iOS"
+  TARGET_NAME_gz: "FMConnect-Linux-x64-AppImage.tar"
+  TARGET_NAME_AppImage: "FMConnect-Linux-x64-AppImage"
+  TARGET_NAME_deb: "FMConnect-Debian-x64"
+  # TARGET_NAME_rpm: "FMConnect-rpm-x64"
+  TARGET_NAME_apk: "FMConnect-Android"
+  TARGET_NAME_aab: "FMConnect-Android"
+  TARGET_NAME_exe: "FMConnect-Windows-Setup-x64"
+  TARGET_NAME_msix: "FMConnect-Windows-x64"
+  TARGET_NAME_zip: "FMConnect-Windows-Portable-x64"
+  TARGET_NAME_dmg: "FMConnect-MacOS"
+  TARGET_NAME_pkg: "FMConnect-MacOS-Installer"
+  TARGET_NAME_ipa: "FMConnect-iOS"
   
 
 jobs:
@@ -265,7 +265,7 @@ jobs:
           folder: 'dist'
           timestamp-server: 'http://timestamp.digicert.com'
           recursive: true
-          description: 'Hiddify'
+          description: 'FMConnect'
 
       - name: Copy to out Windows
         if: matrix.platform == 'windows'
@@ -317,7 +317,7 @@ jobs:
         run: |
           mkdir out
           ls -R ./build/app/outputs
-          cp ./build/app/outputs/bundle/release/app-release.aab out/hiddify-android-market.aab || echo "no aab"
+          cp ./build/app/outputs/bundle/release/app-release.aab out/fmconnect-android-market.aab || echo "no aab"
 
       - name: Copy to out unix
         if: startsWith(matrix.platform,'linux') || matrix.platform == 'macos' || matrix.platform == 'ios'
@@ -401,7 +401,7 @@ jobs:
           set +e 
           sed 's|RELEASE_TAG|${{ env.TAG_NAME }}|g' ./.github/release_message.md > release.md
           pip install gitchangelog pystache mustache markdown
-          prelease=$(curl --silent "https://api.github.com/repos/hiddify/hiddify-app/releases/latest" | grep -Po '"tag_name": "\K([^"]*)') 
+          prelease=$(curl --silent "https://api.github.com/repos/FAMJAM1/FMConnect-app/releases/latest" | grep -Po '"tag_name": "\K([^"]*)')
           echo -e "\n\n<details markdown=1><summary>All changes from $current to the latest commit:</summary>\n\n">>release.md
           gitchangelog "${prelease}.." >> release.md  2>&1 || echo "Error in gitchangelog"
           echo -e "\n\n</details>">>release.md
@@ -415,20 +415,6 @@ jobs:
           tag_name: 'draft'
           body_path: './release.md'
           prerelease: true
-
-      - name: Create or Update Draft Release
-        uses: softprops/action-gh-release@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN_FOR_HIDDIFY_APP_REPO }}
-          GITHUB_REPOSITORY: hiddify/hiddify-app
-        with:
-          files: ./out/*
-          name: 'draft'
-          tag_name: 'draft'
-          body_path: './release.md'
-          target_commitish: '530bf77839a74d4f13847ba244a20734ac7ab119'
-          prerelease: true
-          repository: hiddify/hiddify-app
 
   upload-release:
     permissions: write-all
@@ -451,7 +437,7 @@ jobs:
           ls -R ./out
           ls -R ./.github/
           ls -R ./.git/
-          mv out/hiddify-android-market.aab  hiddify-android-market.aab
+          mv out/fmconnect-android-market.aab  fmconnect-android-market.aab
 
       - name: prepare_release_message
         run: |
@@ -478,7 +464,7 @@ jobs:
           serviceAccountJson: service_account.json
           packageName: app.hiddify.com
           releaseName: ${{ env.TAG_NAME }}
-          releaseFiles: ./hiddify-android-market.aab
+          releaseFiles: ./fmconnect-android-market.aab
           track: 'beta'
 
 
@@ -524,7 +510,7 @@ jobs:
 
       - uses: Apple-Actions/upload-testflight-build@v4
         with:
-          app-path: 'out/Hiddify-iOS.ipa' 
+          app-path: 'out/FMConnect-iOS.ipa' 
           issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
           api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
           api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
