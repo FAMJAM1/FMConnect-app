@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:hiddify/core/app_info/app_info_provider.dart';
 import 'package:hiddify/core/localization/locale_preferences.dart';
 import 'package:hiddify/core/model/constants.dart';
-import 'package:hiddify/core/model/environment.dart';
 import 'package:hiddify/core/preferences/preferences_provider.dart';
 import 'package:hiddify/core/utils/preferences_utils.dart';
 import 'package:hiddify/features/app_update/data/app_update_data_providers.dart';
@@ -50,6 +49,15 @@ class AppUpdateNotifier extends _$AppUpdateNotifier with AppLogger {
   Future<AppUpdateState> check() async {
     loggy.debug("checking for update");
     state = const AppUpdateState.checking();
+    // TODO: temporary stub - _checkUpstream() below hits Hiddify's own
+    // GitHub releases API (Constants.githubReleasesApiUrl), which has no
+    // relation to this fork's versions. Wire this up to FMConnect's own
+    // release feed before switching back to it.
+    return state = const AppUpdateState.notAvailable();
+  }
+
+  // ignore: unused_element
+  Future<AppUpdateState> _checkUpstream() async {
     final appInfo = ref.watch(appInfoProvider).requireValue;
     if (!appInfo.release.allowCustomUpdateChecker) {
       loggy.debug("custom update checkers are not allowed for [${appInfo.release.name}] release");

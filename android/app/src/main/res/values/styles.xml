@@ -19,4 +19,7 @@
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">?android:colorBackground</item>
     </style>
+
+    <!-- host theme for QuickSwitchActivity -->
+    <style name="Theme.QuickSwitch" parent="Theme.MaterialComponents.DayNight.Dialog.Alert" />
 </resources>

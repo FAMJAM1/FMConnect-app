@@ -102,6 +102,35 @@ class ServiceNotification(private val status: MutableLiveData<Status>, private v
                             )
                             ).build()
                     )
+                    addAction(
+                            NotificationCompat.Action.Builder(
+                                    // opens QuickSwitchActivity, not MainActivity
+                                    0, service.getText(R.string.switch_server), PendingIntent.getActivity(
+                                    service,
+                                    // different requestCode than contentIntent above, or they'd collide
+                                    1,
+                                    Intent(
+                                            service,
+                                            com.hiddify.hiddify.QuickSwitchActivity::class.java
+                                    ).apply {
+                                        setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    },
+                                    flags
+                            )
+                            ).build()
+                    )
+                    addAction(
+                            NotificationCompat.Action.Builder(
+                                    0, service.getText(R.string.reset_connections), PendingIntent.getBroadcast(
+                                    service,
+                                    0,
+                                    Intent(Action.SERVICE_RESET_CONNECTIONS).setPackage(
+                                        Application.application.packageName
+                                    ),
+                                    flags
+                            )
+                            ).build()
+                    )
                 }
     }
 

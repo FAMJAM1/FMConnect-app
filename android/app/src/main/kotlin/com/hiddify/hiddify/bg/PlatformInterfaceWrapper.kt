@@ -69,9 +69,12 @@ interface PlatformInterfaceWrapper : PlatformInterface {
             }
             return owner
         } catch (e: Exception) {
+            // See getInterfaces() - rethrowing here (the previous behavior)
+            // let the exception escape this JNI callback, which crashes the
+            // process instead of propagating normally. Report "not found"
+            // instead.
             Log.e("PlatformInterface", "getConnectionOwnerUid", e)
-            e.printStackTrace(System.err)
-            throw e
+            return ConnectionOwner().also { it.userId = Process.INVALID_UID }
         }
     }
 
@@ -84,6 +87,21 @@ interface PlatformInterfaceWrapper : PlatformInterface {
     }
 
     override fun getInterfaces(): NetworkInterfaceIterator {
+        // Any exception thrown from here escapes across the gomobile/JNI
+        // callback boundary (Go calling back into this Kotlin override),
+        // which the generated glue doesn't handle - it corrupts the seq
+        // reference table instead of propagating cleanly, crashing the
+        // process with an unrelated-looking "Unknown reference" abort. Fall
+        // back to an empty interface list rather than let that happen.
+        try {
+            return getInterfacesUnsafe()
+        } catch (e: Exception) {
+            Log.e("PlatformInterface", "getInterfaces", e)
+            return InterfaceArray(emptyList<LibboxNetworkInterface>().iterator())
+        }
+    }
+
+    private fun getInterfacesUnsafe(): NetworkInterfaceIterator {
         val networks = Application.connectivity.allNetworks
         val networkInterfaces = NetworkInterface.getNetworkInterfaces().toList()
         val interfaces = mutableListOf<LibboxNetworkInterface>()
@@ -147,18 +165,27 @@ interface PlatformInterfaceWrapper : PlatformInterface {
     override fun clearDNSCache() {
     }
 
-    override fun readWIFIState(): WIFIState? {
+    override fun readWIFIState(): WIFIState? = try {
         @Suppress("DEPRECATION")
-        val wifiInfo =
-            Application.wifiManager.connectionInfo ?: return null
-        var ssid = wifiInfo.ssid
-        if (ssid == "<unknown ssid>") {
-            return WIFIState("", "")
+        val wifiInfo = Application.wifiManager.connectionInfo
+        if (wifiInfo == null) {
+            null
+        } else {
+            var ssid = wifiInfo.ssid
+            if (ssid == "<unknown ssid>") {
+                WIFIState("", "")
+            } else {
+                if (ssid.startsWith("\"") && ssid.endsWith("\"")) {
+                    ssid = ssid.substring(1, ssid.length - 1)
+                }
+                WIFIState(ssid, wifiInfo.bssid)
+            }
         }
-        if (ssid.startsWith("\"") && ssid.endsWith("\"")) {
-            ssid = ssid.substring(1, ssid.length - 1)
-        }
-        return WIFIState(ssid, wifiInfo.bssid)
+    } catch (e: Exception) {
+        // See getInterfaces() - an exception escaping this JNI callback
+        // crashes the process instead of propagating normally.
+        Log.e("PlatformInterface", "readWIFIState", e)
+        null
     }
 
     override fun localDNSTransport(): LocalDNSTransport? = LocalResolver

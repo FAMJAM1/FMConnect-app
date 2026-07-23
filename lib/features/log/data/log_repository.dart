@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:fpdart/fpdart.dart';
+import 'package:hiddify/core/logger/logger_controller.dart';
 import 'package:hiddify/core/utils/exception_handler.dart';
 import 'package:hiddify/features/log/data/log_parser.dart';
 import 'package:hiddify/features/log/data/log_path_resolver.dart';
@@ -11,6 +12,7 @@ import 'package:hiddify/utils/custom_loggers.dart';
 abstract interface class LogRepository {
   TaskEither<LogFailure, Unit> init();
   Stream<Either<LogFailure, List<LogEntity>>> watchLogs();
+  Stream<Either<LogFailure, List<LogEntity>>> watchAppLogs();
   TaskEither<LogFailure, Unit> clearLogs();
 }
 
@@ -54,7 +56,20 @@ class LogRepositoryImpl with ExceptionHandler, InfraLogger implements LogReposit
   }
 
   @override
+  Stream<Either<LogFailure, List<LogEntity>>> watchAppLogs() {
+    return LoggerController.instance.appLogController.stream
+        .map((records) => records.map(LogParser.parseLogRecord).toList())
+        .handleExceptions((error, stackTrace) {
+          loggy.warning("error watching app logs", error, stackTrace);
+          return LogFailure.unexpected(error, stackTrace);
+        });
+  }
+
+  @override
   TaskEither<LogFailure, Unit> clearLogs() {
-    return exceptionHandler(() => singbox.clearLogs().mapLeft(LogFailure.unexpected).run(), LogFailure.unexpected);
+    return exceptionHandler(() {
+      LoggerController.instance.clearAppLogBuffer();
+      return singbox.clearLogs().mapLeft(LogFailure.unexpected).run();
+    }, LogFailure.unexpected);
   }
 }

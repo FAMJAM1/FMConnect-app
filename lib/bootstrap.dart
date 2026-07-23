@@ -23,6 +23,7 @@ import 'package:hiddify/features/log/data/log_data_providers.dart';
 import 'package:hiddify/features/profile/data/profile_data_providers.dart';
 import 'package:hiddify/features/profile/notifier/active_profile_notifier.dart';
 import 'package:hiddify/features/proxy/active/active_proxy_notifier.dart';
+import 'package:hiddify/features/settings/data/config_option_repository.dart';
 import 'package:hiddify/features/system_tray/notifier/system_tray_notifier.dart';
 import 'package:hiddify/features/window/notifier/window_notifier.dart';
 import 'package:hiddify/hiddifycore/hiddify_core_service_provider.dart';
@@ -62,6 +63,13 @@ Future<void> lazyBootstrap(WidgetsBinding widgetsBinding, Environment env) async
       if (env == Environment.dev) rethrow;
       Logger.bootstrap.info("clearing preferences");
       await container.read(sharedPreferencesProvider).requireValue.clear();
+    }
+  });
+
+  await _init("mixed proxy password", () async {
+    final current = container.read(ConfigOptions.mixedPassword);
+    if (current.isEmpty) {
+      await container.read(ConfigOptions.mixedPassword.notifier).update(generateSecureToken(32));
     }
   });
 

@@ -14,6 +14,7 @@ import android.os.IBinder
 import android.os.ParcelFileDescriptor
 import android.os.PowerManager
 import android.util.Log
+import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
@@ -39,6 +40,10 @@ import com.hiddify.core.libbox.SystemProxyStatus
 import com.hiddify.hiddify.BuildConfig
 import com.hiddify.hiddify.MainActivity
 import com.hiddify.hiddify.constant.Bugs
+import com.hiddify.hiddify.utils.GrpcClientProvider
+import com.hiddify.core.api.v2.hcommon.Empty
+import com.hiddify.core.api.v2.hcore.CoreClient
+import com.hiddify.core.api.v2.hcore.SelectOutboundRequest
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -124,6 +129,10 @@ class BoxService(
                     stopService()
                 }
 
+                Action.SERVICE_RESET_CONNECTIONS -> {
+                    resetConnections()
+                }
+
                 PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED -> {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                         serviceUpdateIdleMode()
@@ -202,6 +211,31 @@ class BoxService(
         } catch (e: Exception) {
             stopAndAlert(Alert.StartService, e.message)
             return
+        }
+    }
+
+    // re-selecting the active outbound triggers InterruptExistConnections,
+    // dropping/reconnecting everything without a full core restart
+    private fun resetConnections() {
+        GlobalScope.launch(Dispatchers.IO) {
+            try {
+                val coreClient = GrpcClientProvider.grpcClient.create(CoreClient::class)
+                val (send, receive) = coreClient.MainOutboundsInfo().executeIn(this)
+                send.send(Empty())
+                send.close()
+                val groups = receive.receive()
+                receive.cancel()
+                val selectedTag = groups.items.find { it.tag == "select" }?.selected
+                if (!selectedTag.isNullOrEmpty()) {
+                    coreClient.SelectOutbound()
+                        .executeBlocking(SelectOutboundRequest(group_tag = "select", outbound_tag = selectedTag))
+                }
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(service, R.string.connections_reset, Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "failed to reset connections", e)
+            }
         }
     }
 
@@ -327,6 +361,7 @@ class BoxService(
         if (!receiverRegistered) {
             ContextCompat.registerReceiver(service, receiver, IntentFilter().apply {
                 addAction(Action.SERVICE_CLOSE)
+                addAction(Action.SERVICE_RESET_CONNECTIONS)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     addAction(PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED)
                 }
@@ -365,7 +400,7 @@ class BoxService(
         val builder =
             NotificationCompat.Builder(service, notification.identifier).setShowWhen(false)
                 .setContentTitle(notification.title).setContentText(notification.body)
-                .setOnlyAlertOnce(true).setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setOnlyAlertOnce(true).setSmallIcon(R.drawable.ic_stat_logo)
                 .setCategory(NotificationCompat.CATEGORY_EVENT)
                 .setPriority(NotificationCompat.PRIORITY_HIGH).setAutoCancel(true)
         if (!notification.subtitle.isNullOrBlank()) {

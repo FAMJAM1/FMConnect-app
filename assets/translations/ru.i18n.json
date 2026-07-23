@@ -1,6 +1,6 @@
 {
   "common": {
-    "appTitle": "Hiddify",
+    "appTitle": "FMConnect",
     "start": "Начать",
     "version": "Версия",
     "ok": "OK",
@@ -99,7 +99,7 @@
   "intro": {
     "banner": "Все, что вам нужно для интернета без ограничений",
     "termsAndPolicyCaution(rich)": "Продолжая, вы соглашаетесь с ${tap(@:pages.about.termsAndConditions)}",
-    "info(rich)": "Сделано с ❤️ Hiddify - ${tap_source(Открытый исходный код)} (${tap_license(Лицензия)})"
+    "info(rich)": "Сделано с ❤️ FMConnect - ${tap_source(Открытый исходный код)} (${tap_license(Лицензия)})"
   },
   "pages": {
     "home": {
@@ -113,6 +113,9 @@
       "empty": "Нет доступных прокси",
       "activeProxy": "Активный прокси",
       "unknownIp": "Неизвестный IP",
+      "selectServerHint": "Выбрать сервер",
+      "pingTcp": "TCP-пинг",
+      "pingTls": "TLS-хендшейк",
       "sortOptions": {
         "unsorted": "По умолчанию",
         "name": "По алфавиту",
@@ -181,7 +184,9 @@
     "logs": {
       "title": "Логи",
       "shareCoreLogs": "Поделиться логами ядра",
-      "shareAppLogs": "Поделиться логами приложения"
+      "shareAppLogs": "Поделиться логами приложения",
+      "app": "Приложение",
+      "core": "Ядро"
     },
     "about": {
       "title": "О программе",
@@ -217,12 +222,14 @@
           "system": "Системная",
           "dark": "Темная",
           "light": "Светлая",
-          "black": "Черная"
+          "black": "Черная",
+          "console": "Console"
         },
         "enableAnalytics": "Включить аналитику",
         "enableAnalyticsMsg": "Разрешить сбор аналитики и отправку отчетов о сбоях для улучшения приложения",
         "autoIpCheck": "Автоматически проверять IP-адрес",
-        "dynamicNotification": "Отображать скорость в уведомлении",
+        "dynamicNotification": "Расширенное уведомление",
+        "dynamicNotificationDescription": "Скорость, быстрая смена сервера и сброс подключений",
         "hapticFeedback": "Тактильный отклик",
         "actionAtClosing": "Действие при закрытии",
         "autoStart": "Запускать при входе в систему",

@@ -5,6 +5,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'logs_overview_state.freezed.dart';
 
+enum LogSource { app, core }
+
 @freezed
 class LogsOverviewState with _$LogsOverviewState {
   const LogsOverviewState._();
@@ -13,6 +15,7 @@ class LogsOverviewState with _$LogsOverviewState {
     @Default(AsyncLoading()) AsyncValue<List<LogEntity>> logs,
     @Default(false) bool paused,
     @Default("") String filter,
+    @Default(LogSource.core) LogSource source,
     LogLevel? levelFilter,
   }) = _LogsOverviewState;
 }

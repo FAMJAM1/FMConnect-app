@@ -62,7 +62,7 @@ class ConnectionButton extends HookConsumerWidget {
     //   //   },
     //   // );
 
-    const buttonTheme = ConnectionButtonTheme.light;
+    final buttonTheme = Theme.of(context).extension<ConnectionButtonTheme>() ?? ConnectionButtonTheme.light;
 
     //   // return CircleDesignWidget(
     //   //   onTap: switch (connectionStatus) {
@@ -184,6 +184,8 @@ class ConnectionButton extends HookConsumerWidget {
       },
       useImage: today.day >= 19 && today.day <= 23 && today.month == 3,
       secureLabel: secureLabel,
+      discColor: buttonTheme.backgroundColor ?? Colors.white,
+      ringBorder: buttonTheme.ringBorder,
     );
   }
 }
@@ -199,6 +201,8 @@ class _ConnectionButton extends StatelessWidget {
     required this.newButtonColor,
     required this.animated,
     required this.secureLabel,
+    required this.discColor,
+    required this.ringBorder,
   });
 
   final VoidCallback onTap;
@@ -208,6 +212,8 @@ class _ConnectionButton extends StatelessWidget {
   final AssetGenImage image;
   final bool useImage;
   final String secureLabel;
+  final Color discColor;
+  final bool ringBorder;
 
   final Color newButtonColor;
 
@@ -228,13 +234,14 @@ class _ConnectionButton extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               boxShadow: [BoxShadow(blurRadius: 16, color: buttonColor.withValues(alpha: .5))],
+              border: ringBorder ? Border.all(color: buttonColor.withValues(alpha: .6), width: 2) : null,
             ),
             width: 148,
             height: 148,
             child: Material(
               key: const ValueKey("home_connection_button"),
               shape: const CircleBorder(),
-              color: Colors.white,
+              color: discColor,
               child: InkWell(
                 focusColor: Colors.grey,
                 onTap: onTap,

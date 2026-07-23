@@ -2,9 +2,12 @@ import 'dart:math';
 
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:gap/gap.dart';
 import 'package:hiddify/core/localization/translations.dart';
 import 'package:hiddify/core/model/failures.dart';
+import 'package:hiddify/features/connection/notifier/connection_notifier.dart';
+import 'package:hiddify/features/proxy/data/offline_proxy_parser.dart';
 import 'package:hiddify/features/proxy/overview/proxies_overview_notifier.dart';
 import 'package:hiddify/features/proxy/widget/proxy_tile.dart';
 import 'package:hiddify/utils/utils.dart';
@@ -19,6 +22,7 @@ class ProxiesOverviewPage extends HookConsumerWidget with PresLogger {
 
     final proxies = ref.watch(proxiesOverviewNotifierProvider);
     final sortBy = ref.watch(proxiesSortNotifierProvider);
+    final fabKey = useMemoized(() => GlobalKey());
 
     // final selectActiveProxyMutation = useMutation(
     //   initialOnFailure: (error) => CustomToast.error(t.presentShortError(error)).show(context),
@@ -41,7 +45,43 @@ class ProxiesOverviewPage extends HookConsumerWidget with PresLogger {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () async => await ref.read(proxiesOverviewNotifierProvider.notifier).urlTest("select"),
+        key: fabKey,
+        onPressed: () async {
+          final groupTag = proxies.valueOrNull?.tag;
+          if (groupTag == null) return;
+          final notifier = ref.read(proxiesOverviewNotifierProvider.notifier);
+
+          if (ref.read(serviceRunningProvider)) {
+            await notifier.urlTest(groupTag);
+            return;
+          }
+
+          final renderBox = fabKey.currentContext?.findRenderObject() as RenderBox?;
+          final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
+          if (renderBox == null || overlay == null) {
+            await notifier.urlTest(groupTag);
+            return;
+          }
+          final topLeft = renderBox.localToGlobal(Offset.zero, ancestor: overlay);
+          final bottomRight = renderBox.localToGlobal(renderBox.size.bottomRight(Offset.zero), ancestor: overlay);
+
+          final method = await showMenu<OfflinePingMethod>(
+            context: context,
+            position: RelativeRect.fromRect(Rect.fromPoints(topLeft, bottomRight), Offset.zero & overlay.size),
+            items: [
+              PopupMenuItem(
+                value: OfflinePingMethod.tcp,
+                child: Text(t.pages.proxies.pingTcp),
+              ),
+              PopupMenuItem(
+                value: OfflinePingMethod.tls,
+                child: Text(t.pages.proxies.pingTls),
+              ),
+            ],
+          );
+          if (method == null) return;
+          await notifier.urlTest(groupTag, method: method);
+        },
         tooltip: t.pages.proxies.testDelay,
         child: const Icon(FluentIcons.flash_24_filled),
       ),

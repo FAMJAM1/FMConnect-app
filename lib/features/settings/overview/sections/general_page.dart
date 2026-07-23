@@ -35,6 +35,7 @@ class GeneralPage extends HookConsumerWidget {
           if (PlatformUtils.isAndroid) ...[
             SwitchListTile.adaptive(
               title: Text(t.pages.settings.general.dynamicNotification),
+              subtitle: Text(t.pages.settings.general.dynamicNotificationDescription),
               secondary: const Icon(Icons.speed_rounded),
               value: ref.watch(Preferences.dynamicNotification),
               onChanged: ref.read(Preferences.dynamicNotification.notifier).update,

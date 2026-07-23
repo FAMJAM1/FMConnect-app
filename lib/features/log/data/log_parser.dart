@@ -4,9 +4,25 @@ import 'package:dartx/dartx.dart';
 import 'package:hiddify/features/log/model/log_entity.dart';
 import 'package:hiddify/features/log/model/log_level.dart';
 import 'package:hiddify/hiddifycore/generated/v2/hcore/hcore.pb.dart' as pb;
+import 'package:loggy/loggy.dart' as loggyl;
 import 'package:tint/tint.dart';
 
 abstract class LogParser {
+  static LogEntity parseLogRecord(loggyl.LogRecord record) {
+    final priority = record.level.priority;
+    final LogLevel level;
+    if (priority <= loggyl.LogLevel.debug.priority) {
+      level = LogLevel.debug;
+    } else if (priority <= loggyl.LogLevel.info.priority) {
+      level = LogLevel.info;
+    } else if (priority <= loggyl.LogLevel.warning.priority) {
+      level = LogLevel.warn;
+    } else {
+      level = LogLevel.error;
+    }
+    return LogEntity(level: level, time: record.time, message: record.message);
+  }
+
   static LogEntity parseLogProto(pb.LogMessage message) {
     final level = switch (message.level) {
       pb.LogLevel.DEBUG => LogLevel.debug,

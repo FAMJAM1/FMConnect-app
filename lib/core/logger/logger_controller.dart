@@ -4,12 +4,17 @@ import 'package:hiddify/core/logger/custom_logger.dart';
 import 'package:hiddify/utils/custom_loggers.dart';
 import 'package:loggy/loggy.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:rxdart/rxdart.dart';
 
 class LoggerController extends LoggyPrinter with InfraLogger {
   LoggerController(this.consolePrinter, this.otherPrinters);
 
   final LoggyPrinter consolePrinter;
   final Map<String, LoggyPrinter> otherPrinters;
+
+  // in-memory ring buffer of app-side logs, for the in-app Logs screen
+  final List<LogRecord> _appLogBuffer = [];
+  final appLogController = BehaviorSubject<List<LogRecord>>.seeded(const []);
 
   static LoggerController get instance => _instance;
 
@@ -38,6 +43,11 @@ class LoggerController extends LoggyPrinter with InfraLogger {
     otherPrinters.putIfAbsent(name, () => printer);
   }
 
+  void clearAppLogBuffer() {
+    _appLogBuffer.clear();
+    appLogController.add(const []);
+  }
+
   void removePrinter(String name) {
     loggy.debug("removing [$name] printer");
     final printer = otherPrinters[name];
@@ -53,5 +63,10 @@ class LoggerController extends LoggyPrinter with InfraLogger {
     for (final printer in otherPrinters.values) {
       printer.onLog(record);
     }
+    _appLogBuffer.add(record);
+    if (_appLogBuffer.length > 300) {
+      _appLogBuffer.removeAt(0);
+    }
+    appLogController.add(List.unmodifiable(_appLogBuffer));
   }
 }

@@ -46,10 +46,9 @@ class LogsOverviewNotifier extends _$LogsOverviewNotifier with AppLogger {
     loggy.debug("adding listeners");
     ref.watch(coreRestartSignalProvider);
     await _listener?.cancel();
-    _listener = ref
-        .read(logRepositoryProvider)
-        .requireValue
-        .watchLogs()
+    final repo = await ref.read(logRepositoryProvider.future);
+    final source = state.source == LogSource.core ? repo.watchLogs() : repo.watchAppLogs();
+    _listener = source
         .throttle((_) => Stream.value(_listener?.isPaused ?? false), leading: false, trailing: true)
         .throttleTime(const Duration(milliseconds: 250), leading: false, trailing: true)
         .asyncMap((event) async {
@@ -59,12 +58,21 @@ class LogsOverviewNotifier extends _$LogsOverviewNotifier with AppLogger {
               state = state.copyWith(logs: AsyncError(f, StackTrace.current));
             },
             (a) async {
-              _logs = a.reversed;
+              _logs = a;
               state = state.copyWith(logs: AsyncData(await _computeLogs()));
             },
           );
         })
         .listen((event) {});
+  }
+
+  /// Switches between app (Dart-side) and core (Go/sing-box) log sources.
+  Future<void> switchSource(LogSource source) async {
+    if (source == state.source) return;
+    loggy.debug("switching log source to [$source]");
+    _logs = [];
+    state = state.copyWith(source: source, logs: const AsyncLoading());
+    await _addListeners();
   }
 
   Iterable<LogEntity> _logs = [];
@@ -78,6 +86,12 @@ class LogsOverviewNotifier extends _$LogsOverviewNotifier with AppLogger {
       return (_filter.isEmpty || e.message.contains(_filter)) &&
           (_levelFilter == null || e.level == null || e.level!.index >= _levelFilter!.index);
     }).toList();
+  }
+
+  /// Manually re-subscribes to the log stream.
+  Future<void> refresh() async {
+    loggy.debug("refreshing");
+    await _addListeners();
   }
 
   void pause() {
@@ -94,9 +108,8 @@ class LogsOverviewNotifier extends _$LogsOverviewNotifier with AppLogger {
 
   Future<void> clear() async {
     loggy.debug("clearing");
-    await ref
-        .read(logRepositoryProvider)
-        .requireValue
+    final repo = await ref.read(logRepositoryProvider.future);
+    await repo
         .clearLogs()
         .match(
           (l) {

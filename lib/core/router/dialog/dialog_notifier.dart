@@ -4,6 +4,7 @@ import 'package:hiddify/core/router/dialog/widgets/action_at_closing_dialog.dart
 import 'package:hiddify/core/router/dialog/widgets/chain_license_dialog.dart';
 import 'package:hiddify/core/router/dialog/widgets/confirmation_dialog.dart';
 import 'package:hiddify/core/router/dialog/widgets/custom_alert_dialog.dart';
+import 'package:hiddify/core/router/dialog/widgets/error_report_dialog.dart';
 import 'package:hiddify/core/router/dialog/widgets/experimental_feature_notice.dart';
 import 'package:hiddify/core/router/dialog/widgets/free_profile_consent_dialog.dart';
 import 'package:hiddify/core/router/dialog/widgets/new_version_dialog.dart';
@@ -71,6 +72,10 @@ class DialogNotifier extends _$DialogNotifier {
 
   Future<void> showOk(String title, String description) async {
     return await _show<void>(OkDialog(title: title, description: description));
+  }
+
+  Future<void> showErrorReport(String title, String description) async {
+    return await _show<void>(ErrorReportDialog(title: title, description: description));
   }
 
   Future<double?> showSettingSlider({

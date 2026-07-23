@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:hiddify/core/haptic/haptic_service.dart';
@@ -10,6 +11,8 @@ import 'package:hiddify/features/connection/model/connection_failure.dart';
 import 'package:hiddify/features/connection/model/connection_status.dart';
 import 'package:hiddify/features/profile/model/profile_entity.dart';
 import 'package:hiddify/features/profile/notifier/active_profile_notifier.dart';
+import 'package:hiddify/features/proxy/data/proxy_data_providers.dart';
+import 'package:hiddify/features/proxy/data/proxy_preferences.dart';
 import 'package:hiddify/hiddifycore/init_signal.dart';
 import 'package:hiddify/utils/utils.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -141,21 +144,63 @@ class ConnectionNotifier extends _$ConnectionNotifier with AppLogger {
       loggy.info("no active profile, not connecting");
       return;
     }
-    await _connectionRepo.connect(activeProfile, ref.read(Preferences.disableMemoryLimit)).mapLeft((
-      ConnectionFailure err,
-    ) async {
-      loggy.warning("error connecting", err);
-      //Go err is not normal object to see the go errors are string and need to be dumped
-      await ref
-          .read(dialogNotifierProvider.notifier)
-          .showCustomAlertFromErr(err.present(ref.read(translationsProvider).requireValue));
-      loggy.warning(err);
-      if (err.toString().contains("panic")) {
-        await Sentry.captureException(Exception(err.toString()));
+    final result = await _connectionRepo.connect(activeProfile, ref.read(Preferences.disableMemoryLimit)).run();
+    await result.match(
+      (ConnectionFailure err) async {
+        loggy.warning("error connecting", err);
+        //Go err is not normal object to see the go errors are string and need to be dumped
+        await ref
+            .read(dialogNotifierProvider.notifier)
+            .showCustomAlertFromErr(err.present(ref.read(translationsProvider).requireValue));
+        loggy.warning(err);
+        if (err.toString().contains("panic")) {
+          await Sentry.captureException(Exception(err.toString()));
+        }
+        await ref.read(Preferences.startedByUser.notifier).update(false);
+        state = AsyncError(err, StackTrace.current);
+      },
+      (_) async {
+        // wait for Connected - selectProxy() no-ops if called too early
+        try {
+          await _connectionRepo
+              .watchConnectionStatus()
+              .firstWhere((s) => s is Connected)
+              .timeout(const Duration(seconds: 15));
+        } catch (e, st) {
+          loggy.warning("timed out waiting for connected status before applying preferred proxy", e, st);
+          return;
+        }
+        await _applyPreferredProxy(activeProfile.id);
+      },
+    );
+  }
+
+  // core's fixed main-selector tag (OutboundSelectTag in v2/config/builder.go);
+  // not in the persisted profile config, only valid once the core is running
+  static const _liveSelectGroupTag = "select";
+
+  /// Applies the server picked from the offline (pre-connect) proxy list, if
+  /// any. Best-effort - retries a few times since the core may still be busy
+  /// with startup work right after reporting "connected".
+  Future<void> _applyPreferredProxy(String profileId) async {
+    final preferredTag = ref.read(proxyPreferencesProvider).read(profileId);
+    if (preferredTag.isEmpty) return;
+
+    for (var attempt = 1; attempt <= 5; attempt++) {
+      final result = await ref.read(proxyRepositoryProvider).selectProxy(_liveSelectGroupTag, preferredTag).run();
+      final failure = result.match((err) => err, (_) => null);
+      if (failure == null) return;
+      loggy.warning("error applying preferred proxy (attempt $attempt/5)", failure);
+      if (attempt == 5) {
+        unawaited(
+          ref
+              .read(dialogNotifierProvider.notifier)
+              .showErrorReport("preferred proxy failed", "[$preferredTag] on [$_liveSelectGroupTag]: $failure"),
+        );
+      } else {
+        await Future<void>.delayed(const Duration(seconds: 1));
       }
-      await ref.read(Preferences.startedByUser.notifier).update(false);
-      state = AsyncError(err, StackTrace.current);
-    }).run();
+    }
   }
 
   Future<void> _disconnect() async {

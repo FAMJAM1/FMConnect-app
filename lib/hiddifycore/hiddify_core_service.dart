@@ -38,7 +38,11 @@ class HiddifyCoreService with InfraLogger {
 
   CoreStatus currentState = const CoreStatus.stopped();
   final statusController = BehaviorSubject<CoreStatus>();
-  final logController = BehaviorSubject<List<LogMessage>>();
+  // Seeded so the Logs screen shows immediately (empty list) instead of
+  // hanging on its loading placeholder until the core happens to emit its
+  // first log line since this session's setup() - an unseeded
+  // BehaviorSubject has nothing to replay to a new subscriber until then.
+  final logController = BehaviorSubject<List<LogMessage>>.seeded([]);
   final CallOptions? grpcOptions = null; //CallOptions(timeout: const Duration(milliseconds: 10000));
   final Map<String, StreamSubscription?> subscriptions = {};
   List<OutboundGroup> latest = [];

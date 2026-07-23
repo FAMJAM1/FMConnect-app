@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hiddify/core/localization/translations.dart';
 import 'package:hiddify/features/settings/data/config_option_repository.dart';
-import 'package:hiddify/features/settings/widget/lan_sharing_tile.dart';
 import 'package:hiddify/features/settings/widget/preference_tile.dart';
 import 'package:hiddify/singbox/model/singbox_config_enum.dart';
 import 'package:hiddify/utils/utils.dart';
@@ -81,7 +80,6 @@ class InboundOptionsPage extends HookConsumerWidget with AppLogger {
             validateInput: isPort,
             trailing: SwitchPreferenceWidget(preference: ConfigOptions.enableDirectPort),
           ),
-          const LanSharingPreferenceWidget(),
         ],
       ),
     );

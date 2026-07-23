@@ -5,13 +5,15 @@ enum AppThemeMode {
   system,
   light,
   dark,
-  black;
+  black,
+  console;
 
   String present(TranslationsEn t) => switch (this) {
     system => t.pages.settings.general.themeModes.system,
     light => t.pages.settings.general.themeModes.light,
     dark => t.pages.settings.general.themeModes.dark,
     black => t.pages.settings.general.themeModes.black,
+    console => t.pages.settings.general.themeModes.console,
   };
 
   ThemeMode get flutterThemeMode => switch (this) {
@@ -19,7 +21,8 @@ enum AppThemeMode {
     light => ThemeMode.light,
     dark => ThemeMode.dark,
     black => ThemeMode.dark,
+    console => ThemeMode.dark,
   };
 
-  bool get trueBlack => this == black;
+  bool get trueBlack => this == black || this == console;
 }

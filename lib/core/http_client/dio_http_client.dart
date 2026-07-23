@@ -41,6 +41,10 @@ class DioHttpClient with InfraLogger {
               return "PROXY localhost:$port; DIRECT";
             }
           };
+          client.authenticateProxy = (host, port, scheme, realm) async {
+            client.addProxyCredentials(host, port, realm ?? '', HttpClientBasicCredentials('hiddify', password));
+            return true;
+          };
           return client;
         },
       );
@@ -52,6 +56,7 @@ class DioHttpClient with InfraLogger {
   }
 
   int port = 0;
+  String password = '';
 
   String userAgent;
   // bool isPortOpen(String host, int port, {Duration timeout = const Duration(milliseconds: 200)}) async{
@@ -81,6 +86,10 @@ class DioHttpClient with InfraLogger {
   void setProxyPort(int port) {
     this.port = port;
     loggy.debug("setting proxy port: [$port]");
+  }
+
+  void setProxyPassword(String password) {
+    this.password = password;
   }
 
   Future<Response<T>> get<T>(

@@ -86,6 +86,7 @@ class ThemeModePrefTile extends ConsumerWidget {
         AppThemeMode.light => Icons.light_mode_rounded,
         AppThemeMode.dark => Icons.dark_mode_rounded,
         AppThemeMode.black => Icons.contrast_rounded,
+        AppThemeMode.console => Icons.terminal_rounded,
       }),
       onTap: () async {
         final selectedThemeMode = await ref

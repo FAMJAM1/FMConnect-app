@@ -167,6 +167,24 @@ flutter:
     - family: Emoji
       fonts:
         - asset: assets/fonts/Emoji.ttf
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter.ttf
+          weight: 400
+        - asset: assets/fonts/Inter.ttf
+          weight: 500
+        - asset: assets/fonts/Inter.ttf
+          weight: 600
+        - asset: assets/fonts/Inter.ttf
+          weight: 700
+    - family: Unbounded
+      fonts:
+        - asset: assets/fonts/Unbounded.ttf
+          weight: 500
+        - asset: assets/fonts/Unbounded.ttf
+          weight: 600
+        - asset: assets/fonts/Unbounded.ttf
+          weight: 700
 
 flutter_gen:
   output: lib/gen/
@@ -174,11 +192,11 @@ flutter_gen:
     flutter_svg: true
 
 flutter_native_splash:
-  color: "#ffffff"
+  color: "#030D1C"
   image: assets/images/source/ic_launcher_splash.png
   android_gravity: center
   android_12:
-    color: "#ffffff"
+    color: "#030D1C"
     image: assets/images/source/ic_launcher_foreground.png
 
 ffigen:

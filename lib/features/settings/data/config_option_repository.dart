@@ -109,6 +109,7 @@ abstract class ConfigOptions {
     12334,
     validator: (value) => isPort(value.toString()),
   );
+  static final mixedPassword = PreferencesNotifier.create<String, String>("mixed-password", "");
   static final tproxyPort = PreferencesNotifier.create<int, int>(
     "tproxy-port",
     12335,
@@ -364,6 +365,7 @@ abstract class ConfigOptions {
     "direct-dns-address": directDnsAddress,
     "direct-dns-domain-strategy": directDnsDomainStrategy,
     "mixed-port": mixedPort,
+    "mixed-password": mixedPassword,
     "tproxy-port": tproxyPort,
     "direct-port": directPort,
     "redirect-port": redirectPort,
@@ -480,6 +482,7 @@ abstract class ConfigOptions {
       directDnsAddress: ref.watch(directDnsAddress),
       directDnsDomainStrategy: ref.watch(directDnsDomainStrategy),
       mixedPort: ref.watch(mixedPort),
+      mixedPassword: ref.watch(mixedPassword),
       tproxyPort: ref.watch(tproxyPort),
       directPort: ref.watch(directPort),
       redirectPort: ref.watch(redirectPort),

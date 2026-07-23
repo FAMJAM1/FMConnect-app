@@ -1,6 +1,6 @@
 ﻿{
   "common": {
-    "appTitle": "Hiddify",
+    "appTitle": "FMConnect",
     "start": "Start",
     "version": "Version",
     "ok": "OK",
@@ -95,7 +95,7 @@
   "intro": {
     "banner": "All you need for an unrestricted internet",
     "termsAndPolicyCaution(rich)": "By continuing you agree to ${tap(@:pages.about.termsAndConditions)}",
-    "info(rich)": "Made with ❤️ by Hiddify - ${tap_source(Open Source)} (${tap_license(License)})"
+    "info(rich)": "Made with ❤️ by FMConnect - ${tap_source(Open Source)} (${tap_license(License)})"
   },
   "pages": {
     "home": {
@@ -109,6 +109,9 @@
       "empty": "No proxies available",
       "activeProxy": "Active proxy",
       "unknownIp": "Unknown IP",
+      "selectServerHint": "Select server",
+      "pingTcp": "TCP ping",
+      "pingTls": "TLS handshake",
       "sortOptions": {
         "unsorted": "Default",
         "name": "Alphabetically",
@@ -177,7 +180,9 @@
     "logs": {
       "title": "Logs",
       "shareCoreLogs": "Share core logs",
-      "shareAppLogs": "Share app logs"
+      "shareAppLogs": "Share app logs",
+      "app": "App",
+      "core": "Core"
     },
     "about": {
       "title": "About",
@@ -213,12 +218,14 @@
           "system": "System default",
           "dark": "Dark mode",
           "light": "Light mode",
-          "black": "Black mode"
+          "black": "Black mode",
+          "console": "Console"
         },
         "enableAnalytics": "Enable analytics",
         "enableAnalyticsMsg": "Give permission to collect analytics and send crash reports to improve the app",
         "autoIpCheck": "Automatically check connection IP",
-        "dynamicNotification": "Display speed in notification",
+        "dynamicNotification": "Advanced notification",
+        "dynamicNotificationDescription": "Speed, quick server switch and reset connections buttons",
         "hapticFeedback": "Haptic feedback",
         "actionAtClosing": "Action at closing",
         "autoStart": "Start at login",

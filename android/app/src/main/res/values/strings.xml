@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="stop">Stop</string>
+    <string name="switch_server">Switch</string>
+    <string name="reset_connections">Reset Connections</string>
+    <string name="connections_reset">Connections reset</string>
+    <string name="switch_server_unavailable">No servers available</string>
+    <string name="server_switched">Switched to %1$s</string>
     <string name="quick_toggle">Toggle</string>
     <string name="status_starting">Service starting…</string>
     <string name="status_started">Service started</string>

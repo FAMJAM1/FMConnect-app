@@ -4,6 +4,7 @@ import 'package:hiddify/core/localization/translations.dart';
 import 'package:hiddify/core/router/dialog/dialog_notifier.dart';
 import 'package:hiddify/features/connection/model/connection_status.dart';
 import 'package:hiddify/features/connection/notifier/connection_notifier.dart';
+import 'package:hiddify/features/profile/notifier/active_profile_notifier.dart';
 import 'package:hiddify/features/proxy/active/active_proxy_notifier.dart';
 import 'package:hiddify/features/proxy/active/ip_widget.dart';
 import 'package:hiddify/hiddifycore/generated/v2/hcore/hcore.pb.dart';
@@ -22,12 +23,48 @@ class ActiveProxyFooter extends ConsumerWidget with InfraLogger {
     final activeProxy = ref.watch(activeProxyNotifierProvider.select((value) => value.valueOrNull));
     final t = ref.watch(translationsProvider).requireValue;
 
-    // Early return if required data is not available
-    if (connectionState != const Connected() || activeProxy == null) {
-      return const SizedBox.shrink();
-    }
-
     final theme = Theme.of(context);
+
+    if (connectionState != const Connected() || activeProxy == null) {
+      final hasActiveProfile = ref.watch(activeProfileProvider.select((value) => value.valueOrNull != null));
+      if (!hasActiveProfile) return const SizedBox.shrink();
+
+      // Not connected yet, but there's a profile to pick a server from -
+      // offer a lightweight entry point into the (offline) server list
+      // instead of hiding the whole footer until the user connects.
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.background.withOpacity(1),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: theme.colorScheme.secondary.withOpacity(.21),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () => context.goNamed('proxies'),
+          child: Row(
+            children: [
+              Icon(Icons.dns_rounded, color: theme.colorScheme.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  t.pages.proxies.selectServerHint,
+                  style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ),
+              const Icon(Icons.arrow_forward_ios, color: Colors.blue),
+            ],
+          ),
+        ),
+      );
+    }
 
     // Handle URL test in a way that won't trigger during build
     Future<void> handleUrlTest() async {

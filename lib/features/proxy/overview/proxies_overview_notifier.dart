@@ -7,7 +7,11 @@ import 'package:hiddify/core/localization/translations.dart';
 import 'package:hiddify/core/preferences/preferences_provider.dart';
 import 'package:hiddify/core/utils/preferences_utils.dart';
 import 'package:hiddify/features/connection/notifier/connection_notifier.dart';
+import 'package:hiddify/features/profile/data/profile_data_providers.dart';
+import 'package:hiddify/features/profile/notifier/active_profile_notifier.dart';
+import 'package:hiddify/features/proxy/data/offline_proxy_parser.dart';
 import 'package:hiddify/features/proxy/data/proxy_data_providers.dart';
+import 'package:hiddify/features/proxy/data/proxy_preferences.dart';
 import 'package:hiddify/features/proxy/model/proxy_failure.dart';
 import 'package:hiddify/hiddifycore/generated/v2/hcore/hcore.pb.dart';
 
@@ -61,7 +65,7 @@ class ProxiesOverviewNotifier extends _$ProxiesOverviewNotifier with AppLogger {
     ref.disposeDelay(const Duration(seconds: 15));
     final serviceRunning = ref.watch(serviceRunningProvider);
     if (!serviceRunning) {
-      return Stream.error(const ServiceNotRunning());
+      return _watchOffline();
     }
     final sortBy = ref.watch(proxiesSortNotifierProvider);
     // yield* ref
@@ -91,6 +95,26 @@ class ProxiesOverviewNotifier extends _$ProxiesOverviewNotifier with AppLogger {
           }),
         )
         .asyncMap((proxies) async => await _sortOutbounds(proxies, sortBy));
+  }
+
+  /// Fallback used when the core isn't running: reads the active profile's
+  /// saved config file directly instead of streaming from a live core, so
+  /// the server list can still be browsed (no ping/delay data available).
+  Stream<OutboundGroup?> _watchOffline() async* {
+    final activeProfile = await ref.watch(activeProfileProvider.future);
+    if (activeProfile == null) {
+      throw const ServiceNotRunning();
+    }
+    final configFile = ref.watch(profilePathResolverProvider).file(activeProfile.id);
+    final preferredTag = ref.watch(proxyPreferencesProvider).read(activeProfile.id);
+    final offline = await parseOfflineProxyGroup(
+      configFile,
+      preferredTag: preferredTag.isEmpty ? null : preferredTag,
+    );
+    if (offline == null) {
+      throw const ServiceNotRunning();
+    }
+    yield offline.group;
   }
 
   // Future<List<OutboundGroup>> _sortOutbounds(
@@ -205,26 +229,66 @@ class ProxiesOverviewNotifier extends _$ProxiesOverviewNotifier with AppLogger {
     if (!state.hasValue) return;
     final outbounds = state.value!;
     await ref.read(hapticServiceProvider.notifier).lightImpact();
-    await ref.read(proxyRepositoryProvider).selectProxy(groupTag, outboundTag).getOrElse((err) {
-      loggy.warning("error selecting outbound", err);
-      throw err;
-    }).run();
-    final newselected = outbounds.items.where((e) => e.tag == outboundTag).firstOrNull;
-    if (newselected != null) {
-      newselected.isSelected = true;
-      outbounds.selected = newselected.tag;
-      state = AsyncValue.data(outbounds);
+
+    if (ref.read(serviceRunningProvider)) {
+      await ref.read(proxyRepositoryProvider).selectProxy(groupTag, outboundTag).getOrElse((err) {
+        loggy.warning("error selecting outbound", err);
+        throw err;
+      }).run();
+    } else {
+      // No core running: just remember the pick, applied once the user
+      // actually connects (see ConnectionNotifier).
+      final activeProfile = await ref.read(activeProfileProvider.future);
+      if (activeProfile != null) {
+        await ref.read(proxyPreferencesProvider).write(activeProfile.id, outboundTag);
+      }
+    }
+
+    for (final item in outbounds.items) {
+      item.isSelected = item.tag == outboundTag;
+    }
+    outbounds.selected = outboundTag;
+    state = AsyncValue.data(outbounds);
+  }
+
+  Future<void> urlTest(String groupTag, {OfflinePingMethod method = OfflinePingMethod.tcp}) async {
+    loggy.debug("testing group: [$groupTag]");
+    if (state case AsyncData(value: final group)) {
+      await ref.read(hapticServiceProvider.notifier).lightImpact();
+
+      if (ref.read(serviceRunningProvider)) {
+        await ref.read(proxyRepositoryProvider).urlTest(groupTag).getOrElse((err) {
+          loggy.error("error testing group", err);
+          throw err;
+        }).run();
+      } else if (group != null) {
+        await _offlineUrlTest(group, method);
+      }
     }
   }
 
-  Future<void> urlTest(String groupTag) async {
-    loggy.debug("testing group: [$groupTag]");
-    if (state case AsyncData()) {
-      await ref.read(hapticServiceProvider.notifier).lightImpact();
-      await ref.read(proxyRepositoryProvider).urlTest(groupTag).getOrElse((err) {
-        loggy.error("error testing group", err);
-        throw err;
-      }).run();
-    }
+  /// No core running: probe each server directly (TCP connect, optionally
+  /// followed by a TLS handshake) instead of the live urlTest RPC.
+  Future<void> _offlineUrlTest(OutboundGroup group, OfflinePingMethod method) async {
+    final activeProfile = await ref.read(activeProfileProvider.future);
+    if (activeProfile == null) return;
+    final configFile = ref.read(profilePathResolverProvider).file(activeProfile.id);
+    final addresses = await parseOfflineServerAddresses(configFile);
+
+    await Future.wait(
+      group.items.map((item) async {
+        final address = addresses[item.tag];
+        if (address == null) return;
+        item.urlTestDelay = switch (method) {
+          OfflinePingMethod.tcp => await measureTcpLatency(address.host, address.port),
+          OfflinePingMethod.tls when address.useTls => await measureTlsHandshakeLatency(
+            address.host,
+            address.port,
+          ),
+          OfflinePingMethod.tls => await measureTcpLatency(address.host, address.port),
+        };
+      }),
+    );
+    state = AsyncValue.data(group);
   }
 }

@@ -6,10 +6,12 @@ import 'package:gap/gap.dart';
 import 'package:hiddify/core/localization/translations.dart';
 import 'package:hiddify/core/model/failures.dart';
 import 'package:hiddify/core/preferences/general_preferences.dart';
+import 'package:hiddify/core/router/dialog/dialog_notifier.dart';
 import 'package:hiddify/core/widget/adaptive_icon.dart';
 import 'package:hiddify/features/log/data/log_data_providers.dart';
 import 'package:hiddify/features/log/model/log_level.dart';
 import 'package:hiddify/features/log/overview/logs_overview_notifier.dart';
+import 'package:hiddify/features/log/overview/logs_overview_state.dart';
 import 'package:hiddify/utils/utils.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:sliver_tools/sliver_tools.dart';
@@ -55,6 +57,12 @@ class LogsPage extends HookConsumerWidget with PresLogger {
       appBar: AppBar(
         title: Text(t.pages.logs.title),
         actions: [
+          IconButton(
+            onPressed: notifier.refresh,
+            icon: const Icon(FluentIcons.arrow_sync_20_regular),
+            tooltip: t.common.update,
+            iconSize: 20,
+          ),
           if (state.paused)
             IconButton(
               onPressed: notifier.resume,
@@ -100,27 +108,43 @@ class LogsPage extends HookConsumerWidget with PresLogger {
                       decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Flexible(
-                              child: TextFormField(
-                                controller: filterController,
-                                onChanged: notifier.filterMessage,
-                                decoration: InputDecoration(isDense: true, hintText: t.common.filter),
-                              ),
+                            SegmentedButton<LogSource>(
+                              segments: [
+                                ButtonSegment(value: LogSource.app, label: Text(t.pages.logs.app)),
+                                ButtonSegment(value: LogSource.core, label: Text(t.pages.logs.core)),
+                              ],
+                              selected: {state.source},
+                              onSelectionChanged: (selected) => notifier.switchSource(selected.first),
                             ),
-                            const Gap(16),
-                            DropdownButton<Option<LogLevel>>(
-                              value: optionOf(state.levelFilter),
-                              onChanged: (v) {
-                                if (v == null) return;
-                                notifier.filterLevel(v.toNullable());
-                              },
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
-                              borderRadius: BorderRadius.circular(4),
-                              items: [
-                                DropdownMenuItem(value: none(), child: Text(t.common.all)),
-                                ...LogLevel.choices.map((e) => DropdownMenuItem(value: some(e), child: Text(e.name))),
+                            const Gap(8),
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: TextFormField(
+                                    controller: filterController,
+                                    onChanged: notifier.filterMessage,
+                                    decoration: InputDecoration(isDense: true, hintText: t.common.filter),
+                                  ),
+                                ),
+                                const Gap(16),
+                                DropdownButton<Option<LogLevel>>(
+                                  value: optionOf(state.levelFilter),
+                                  onChanged: (v) {
+                                    if (v == null) return;
+                                    notifier.filterLevel(v.toNullable());
+                                  },
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                  borderRadius: BorderRadius.circular(4),
+                                  items: [
+                                    DropdownMenuItem(value: none(), child: Text(t.common.all)),
+                                    ...LogLevel.choices.map(
+                                      (e) => DropdownMenuItem(value: some(e), child: Text(e.name)),
+                                    ),
+                                  ],
+                                ),
                               ],
                             ),
                           ],
@@ -137,42 +161,52 @@ class LogsPage extends HookConsumerWidget with PresLogger {
           builder: (context) {
             return CustomScrollView(
               primary: false,
-              reverse: true,
               slivers: <Widget>[
                 switch (state.logs) {
                   AsyncData(value: final logs) => SliverList.builder(
                     itemCount: logs.length,
                     itemBuilder: (context, index) {
                       final log = logs[index];
-                      return Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (log.level != null)
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        log.level!.name.toUpperCase(),
-                                        style: Theme.of(
-                                          context,
-                                        ).textTheme.labelMedium?.copyWith(color: log.level!.color),
-                                      ),
-                                      if (log.time != null)
-                                        Text(log.time!.toString(), style: Theme.of(context).textTheme.labelSmall),
-                                    ],
-                                  ),
-                                Text(extractMessage(log.message), style: Theme.of(context).textTheme.bodySmall),
-                              ],
+                      return InkWell(
+                        onTap: () {
+                          final title = [
+                            if (log.level != null) log.level!.name.toUpperCase(),
+                            if (log.time != null) log.time!.toString(),
+                          ].join(' · ');
+                          ref
+                              .read(dialogNotifierProvider.notifier)
+                              .showErrorReport(title.isEmpty ? t.pages.logs.title : title, log.message);
+                        },
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (log.level != null)
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          log.level!.name.toUpperCase(),
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.labelMedium?.copyWith(color: log.level!.color),
+                                        ),
+                                        if (log.time != null)
+                                          Text(log.time!.toString(), style: Theme.of(context).textTheme.labelSmall),
+                                      ],
+                                    ),
+                                  Text(extractMessage(log.message), style: Theme.of(context).textTheme.bodySmall),
+                                ],
+                              ),
                             ),
-                          ),
-                          if (index != 0) const Divider(indent: 16, endIndent: 16, height: 4),
-                        ],
+                            if (index != logs.length - 1) const Divider(indent: 16, endIndent: 16, height: 4),
+                          ],
+                        ),
                       );
                     },
                   ),
